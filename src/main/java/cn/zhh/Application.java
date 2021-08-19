@@ -12,9 +12,7 @@ import org.openqa.selenium.interactions.Actions;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -55,6 +53,11 @@ public class Application {
      * 谷歌浏览器参数
      */
     private static final ChromeOptions CHROME_OPTIONS = new ChromeOptions();
+
+    /**
+     * 用来存储解析错误的页面
+     */
+    private static final List<String> ERROR_LIST = new ArrayList<>();
 
     static {
         // 驱动位置
@@ -101,6 +104,7 @@ public class Application {
                     e.printStackTrace();
                 }
                 countDownLatch.countDown();
+                System.out.println("\n------还剩下"+countDownLatch.getCount()+"个要处理--------");
             });
         }
 //        divItems.forEach(item ->
@@ -115,6 +119,10 @@ public class Application {
 //        );
         countDownLatch.await();
         EXECUTOR.shutdown();
+        System.out.println("\n-------未成功解析的页面-------");
+        for (String s : ERROR_LIST) {
+            System.out.println(s);
+        }
         System.exit(0);
     }
 
@@ -170,6 +178,7 @@ public class Application {
 //            System.out.println(href.substring(1));
             Files.write(Paths.get(FILE_SAVE_DIR, videoTitle + ".mp4"), response.bodyAsBytes());
         } else {
+            ERROR_LIST.add("https://www.ixigua.com" + href);
             System.out.println("无法解析的src：[" + src + "]");
         }
     }
