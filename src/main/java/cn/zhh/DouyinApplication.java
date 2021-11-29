@@ -77,7 +77,7 @@ public class DouyinApplication {
     public static void main(String[] args) throws InterruptedException {
         // 获取小视频列表的div元素，批量处理
         Document mainDoc = Jsoup.parse(getMainPageSource());
-        Elements divItems = mainDoc.select("li[class=\"e0fe394964bbd9fef7d310c80353afdd-scss\"]");
+        Elements divItems = mainDoc.select("li[class=\"_4P45SWS7\"]");
         System.out.println("divItems size:" + divItems.size());
         // 这里使用CountDownLatch关闭线程池，只是避免执行完一直没退出
         CountDownLatch countDownLatch;
