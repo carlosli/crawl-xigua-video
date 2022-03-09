@@ -46,7 +46,7 @@ public class DouyinApplication {
      * 线程池，按需修改并行数量。实际开发请自定义避免OOM
      */
 //    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(5);
+    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(3);
 
     /**
      * 谷歌浏览器参数
@@ -77,7 +77,7 @@ public class DouyinApplication {
     public static void main(String[] args) throws InterruptedException {
         // 获取小视频列表的div元素，批量处理
         Document mainDoc = Jsoup.parse(getMainPageSource());
-        Elements divItems = mainDoc.select("li[class=\"_4P45SWS7\"]");
+        Elements divItems = mainDoc.select("li[class=\"ECMy_Zdt\"]");
         System.out.println("divItems size:" + divItems.size());
         // 这里使用CountDownLatch关闭线程池，只是避免执行完一直没退出
         CountDownLatch countDownLatch;
@@ -165,8 +165,8 @@ public class DouyinApplication {
         String src = videoMap.get("src");
         String videoTitle = videoMap.get("videoTitle");
 
-        System.out.println("downloadUrl:" + src);
-        System.out.println("videoTitle:" + videoTitle);
+        System.out.println("downloadUrl:\n" + src);
+        System.out.println("videoTitle:\n" + videoTitle);
 
         // 有些blob开头的（可能还有其它）暂不处理
         if (src.startsWith("//")) {
@@ -215,9 +215,21 @@ public class DouyinApplication {
 //                    || Objects.isNull(v = v.getElementsByTag("video").first()))
                             && timeout > 0);
 
-            // 获取标题
-            Elements videoTitleElements = Jsoup.parse(driver.getPageSource()).getElementsByTag("head").get(0).getElementsByTag("title");
+            // 获取网页标题
+//            Elements videoTitleElements = Jsoup.parse(driver.getPageSource()).getElementsByTag("head").get(0).getElementsByTag("title");
+//            String videoTitle = videoTitleElements.text();
+
+            Elements videoTitleElements = Jsoup.parse(driver.getPageSource()).getElementsByClass("z8_VexPf");
             String videoTitle = videoTitleElements.text();
+            videoTitle = videoTitle.replaceAll("(\r\n|\r|\n|\n\r)", "");
+            videoTitle = videoTitle.replaceAll("\\|", "");
+
+
+//            Jsoup.parse(driver.getPageSource()).
+//            Jsoup.parse(driver.getPageSource()).getElementsByTag("head").get(0).getElementsByTag("title").;
+//            String videoTitle = videoTitleElements.text();
+//
+//            response.xpath('//div[@class="t1"]').xpath('string(.)').extract()[0]
 
             HashMap<String, String> map = new HashMap<>();
             map.put("videoTitle", videoTitle);
