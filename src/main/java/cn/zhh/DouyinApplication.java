@@ -12,6 +12,8 @@ import org.openqa.selenium.interactions.Actions;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -30,12 +32,13 @@ public class DouyinApplication {
     /**
      * 要下载前几个，下载所有设置为null
      */
-    private static final Integer DOWNLOAD_SIZE = 50;
+    private static final Integer DOWNLOAD_SIZE = 100;
 
     /**
      * 小视频首页，按需修改
      */
-    private static final String MAIN_PAGE_URL = "https://www.douyin.com/user/MS4wLjABAAAAKEB7eweWYwkgl7sfUzY15O8GvhrLUvTk8ws9zfq6GzA";
+//    private static final String MAIN_PAGE_URL = "https://www.douyin.com/user/MS4wLjABAAAAKEB7eweWYwkgl7sfUzY15O8GvhrLUvTk8ws9zfq6GzA";
+    private static final String MAIN_PAGE_URL = "https://www.douyin.com/user/MS4wLjABAAAAj72V0SzSL8EIow2mbrngYJXThZwMWiJU8YPRBbXfuAWn7MZ7MVqmmOs74IInvSyA";
 
     /**
      * 存放目录，按需修改
@@ -77,8 +80,15 @@ public class DouyinApplication {
     public static void main(String[] args) throws InterruptedException {
         // 获取小视频列表的div元素，批量处理
         Document mainDoc = Jsoup.parse(getMainPageSource());
-        Elements divItems = mainDoc.select("li[class=\"ECMy_Zdt\"]");
+
+        // 页面会有两种不同的样式，都进行匹配
+        Elements divItems = mainDoc.select("li[class=\"Eie04v01\"]");
         System.out.println("divItems size:" + divItems.size());
+        if (divItems.size() == 0) {
+            divItems = mainDoc.select("li[class=\"ECMy_Zdt\"]");
+            System.out.println("divItems size:" + divItems.size());
+        }
+
         // 这里使用CountDownLatch关闭线程池，只是避免执行完一直没退出
         CountDownLatch countDownLatch;
         if (DOWNLOAD_SIZE != null) {
@@ -91,16 +101,36 @@ public class DouyinApplication {
             countDownLatch = new CountDownLatch(divItems.size());
         }
 
+        // 用于文件名序号倒排
+        Integer fileNumber = divItems.size() + 1;
+        String dateTime = LocalDateTime.now().format(DateTimeFormatter.BASIC_ISO_DATE);
+
         for (int i = 0; i < divItems.size(); i++) {
 
             if (DOWNLOAD_SIZE != null) {
                 if (i == DOWNLOAD_SIZE) break;
             }
 
+            String FILE_NAME_PRE = dateTime + "_" + fileNumber--;
+
+            // 跳过第几个（数字其实比实际要跳的-1）
+//            if (
+//                    !fileNumber.equals(200) &&
+//                            !fileNumber.equals(195) &&
+//                            !fileNumber.equals(193) &&
+//                            !fileNumber.equals(141) &&
+//                            !fileNumber.equals(138)
+//            ) {
+//                System.out.println(fileNumber + 1 + "跳过");
+//                continue;
+//            }
+
+
             int finalI = i;
+            Elements finalDivItems = divItems;
             EXECUTOR.execute(() -> {
                 try {
-                    DouyinApplication.handleItem(divItems.get(finalI));
+                    DouyinApplication.handleItem(FILE_NAME_PRE + "_", finalDivItems.get(finalI));
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -139,7 +169,7 @@ public class DouyinApplication {
             driver.get(MAIN_PAGE_URL);
             long waitTime = Double.valueOf(Math.max(3, Math.random() * 5) * 1000).longValue();
             TimeUnit.MILLISECONDS.sleep(waitTime);
-            long timeout = 10_000;
+            long timeout = 30_000;
             // 循环下拉，直到全部加载完成或者超时
             do {
                 new Actions(driver).sendKeys(Keys.END).perform();
@@ -159,7 +189,7 @@ public class DouyinApplication {
      * @param div 小视频div标签元素
      * @throws Exception 各种异常
      */
-    private static void handleItem(Element div) throws Exception {
+    private static void handleItem(String fileNamePre, Element div) throws Exception {
         String href = div.getElementsByTag("a").first().attr("href");
         HashMap<String, String> videoMap = getVideoUrl("" + href);
         String src = videoMap.get("src");
@@ -177,7 +207,7 @@ public class DouyinApplication {
                     .maxBodySize(100 * 1024 * 1024)
                     .execute();
 //            System.out.println(href.substring(1));
-            Files.write(Paths.get(FILE_SAVE_DIR, videoTitle + ".mp4"), response.bodyAsBytes());
+            Files.write(Paths.get(FILE_SAVE_DIR, fileNamePre + videoTitle + ".mp4"), response.bodyAsBytes());
             System.out.println("下载完毕：" + videoTitle);
         } else {
             ERROR_LIST.add(href);
@@ -194,7 +224,12 @@ public class DouyinApplication {
      */
     private static HashMap<String, String> getVideoUrl(String itemUrl) throws InterruptedException {
         System.out.println("itemUrl:" + itemUrl);
-        itemUrl = "https:" + itemUrl;
+        // 页面链接会有两种不同的样式，都进行匹配
+        if (itemUrl.contains("douyin")) {
+            itemUrl = "https:" + itemUrl;
+        } else {
+            itemUrl = "https://www.douyin.com" + itemUrl;
+        }
         ChromeDriver driver = new ChromeDriver(CHROME_OPTIONS);
         try {
             driver.get(itemUrl);
@@ -219,8 +254,8 @@ public class DouyinApplication {
 //            Elements videoTitleElements = Jsoup.parse(driver.getPageSource()).getElementsByTag("head").get(0).getElementsByTag("title");
 //            String videoTitle = videoTitleElements.text();
 
-            Elements videoTitleElements = Jsoup.parse(driver.getPageSource()).getElementsByClass("z8_VexPf");
-            String videoTitle = videoTitleElements.text();
+            Elements videoTitleElements = Jsoup.parse(driver.getPageSource()).getElementsByClass("Nu66P_ba");
+            String videoTitle = videoTitleElements.get(0).text();
             videoTitle = videoTitle.replaceAll("(\r\n|\r|\n|\n\r)", "");
             videoTitle = videoTitle.replaceAll("\\|", "");
 
